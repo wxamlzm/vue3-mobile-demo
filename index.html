@@ -1,11 +1,35 @@
 <!DOCTYPE html>
 <html lang="">
   <head>
-    <meta charset="UTF-8">
-    <link rel="icon" href="/favicon.ico">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <link rel="icon" href="/favicon.ico" />
+
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
     <title>Vite App</title>
   </head>
+
+  <script>
+    function setFontSize() {
+      const screenWidth =
+        window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth
+
+      // 基准值
+      const baseFontSize = 10
+      // 当前项目设计稿宽度
+      const designWidth = 750
+      const scale = screenWidth / designWidth
+      document.documentElement.style.fontSize = baseFontSize * scale + 'px'
+    }
+    // 初始化调用
+    setFontSize()
+    // 监听窗口变化
+    window.addEventListener('resize', setFontSize)
+  </script>
   <body>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
