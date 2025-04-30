@@ -1,44 +1,59 @@
 <template>
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    :width="ORIGINAL_WIDTH"
-    :height="props.height"
+    :width="computedWidth"
+    :height="computedHeight"
     :viewBox="viewBox"
     preserveAspectRatio="xMidYMid meet"
+    shape-rendering="crispEdges"
   >
     <defs>
+      <!-- 增强型渐变配置 -->
       <linearGradient
-        id="linear-gradient"
+        id="linear-border"
         :x1="gradientX1"
         :y1="gradientY"
         :x2="gradientX2"
         :y2="gradientY"
         gradientUnits="userSpaceOnUse"
       >
-        <stop offset="0" stop-color="#0cf" />
-        <stop offset="0.195" stop-color="#0cf" stop-opacity="0" />
-        <stop offset="0.797" stop-color="#0cf" stop-opacity="0" />
-        <stop offset="1" stop-color="#0cf" />
+        <stop offset="0" stop-color="#00a3ff" />
+        <!-- 颜色加深 -->
+        <stop offset="0.1" stop-color="#00a3ff" stop-opacity="1" />
+        <stop offset="0.15" stop-color="#00a3ff" stop-opacity="0.2" />
+        <!-- 缩短透明区间 -->
+        <stop offset="0.85" stop-color="#00a3ff" stop-opacity="0.2" />
+        <stop offset="0.9" stop-color="#00a3ff" stop-opacity="1" />
+        <stop offset="1" stop-color="#008cff" />
       </linearGradient>
 
+      <!-- 锐化滤镜 -->
       <filter
-        id="filter"
+        id="border-filter"
         :x="filterX"
         :y="filterY"
         :width="filterWidth"
         :height="filterHeight"
-        filterUnits="userSpaceOnUse"
+        color-interpolation-filters="sRGB"
       >
-        <!-- 你的滤镜内容 -->
+        <feComponentTransfer>
+          <feFuncA type="discrete" tableValues="0 1 1 1" />
+          <!-- Alpha通道锐化 -->
+        </feComponentTransfer>
       </filter>
     </defs>
 
+    <!-- 优化路径绘制 -->
     <path
       :d="pathData"
-      transform="translate(-13, -1430.69)"
-      stroke="url(#linear-gradient)"
-      fill-rule="evenodd"
-      fill-opacity="0.1"
+      stroke="url(#linear-border)"
+      fill="none"
+      :stroke-width="border"
+      stroke-linecap="square"
+      stroke-linejoin="miter"
+      stroke-miterlimit="4"
+      filter="url(#border-filter)"
+      vector-effect="non-scaling-stroke"
     />
   </svg>
 </template>
@@ -46,50 +61,72 @@
 <script lang="ts" setup>
 import { computed } from 'vue'
 
-// 常量定义
-const ORIGINAL_WIDTH = 713
-const PATH_START_X = 34
-const PATH_START_Y = 1431.7
-const CORNER_SIZE = 20
-const TRANSLATE_X = -13
-const TRANSLATE_Y = -1430.69
-
 const props = defineProps({
-  height: {
+  width: {
+    // 控制上下边横向长度
     type: Number,
-    default: 1261.31
+    default: 600
+  },
+  height: {
+    // 控制左右边纵向高度
+    type: Number,
+    default: 800
+  },
+  border: {
+    // 边框粗细
+    type: Number,
+    default: 2
+  },
+  corner: {
+    // 拐角长度
+    type: Number,
+    default: 20
   }
 })
 
-// 动态计算
-const verticalHeight = computed(() => props.height - CORNER_SIZE * 2)
+// 动态路径生成（对称修复版）
+const pathData = computed(() => {
+  const w = props.width
+  const h = props.height
+  const c = props.corner
 
-const pathData = computed(() =>
+  return `
+    M${c},0
+    H${w - c}
+    L${w},${c}
+    V${h - c}
+    L${w - c},${h}
+    H${c}
+    L0,${h - c}
+    V${c}
+    L${c},0
+    Z
   `
-  M${PATH_START_X},${PATH_START_Y}
-  H${PATH_START_X + 671}
-  l${CORNER_SIZE},${CORNER_SIZE}
-  v${verticalHeight.value}
-  l-${CORNER_SIZE},${CORNER_SIZE}
-  H${PATH_START_X}
-  l-${CORNER_SIZE},-${CORNER_SIZE}
-  V${PATH_START_Y + CORNER_SIZE}
-  Z`.replace(/\n\s+/g, ' ')
-)
+    .replace(/\n\s+/g, ' ')
+    .trim()
+})
 
-const gradientY = computed(
-  () => PATH_START_Y + CORNER_SIZE + verticalHeight.value / 2 + TRANSLATE_Y
-)
+// 渐变定位系统
+const gradientX1 = computed(() => props.corner)
+const gradientX2 = computed(() => props.width - props.corner)
+const gradientY = computed(() => props.height / 2)
 
-const gradientX1 = computed(() => PATH_START_X - 20 + TRANSLATE_X)
-const gradientX2 = computed(() => PATH_START_X + 671 + CORNER_SIZE + TRANSLATE_X)
+// 滤镜定位系统
+const filterX = computed(() => -props.border * 2)
+const filterY = computed(() => -props.border * 2)
+const filterWidth = computed(() => props.width + props.border * 4)
+const filterHeight = computed(() => props.height + props.border * 4)
 
-const filterX = computed(() => PATH_START_X - CORNER_SIZE + TRANSLATE_X)
-const filterY = computed(() => PATH_START_Y + TRANSLATE_Y)
-const filterWidth = 705 - PATH_START_X + CORNER_SIZE * 2
-const filterHeight = computed(() => verticalHeight.value + CORNER_SIZE * 2 + Math.abs(TRANSLATE_Y))
+// 尺寸计算
+const computedWidth = computed(() => props.width + props.border * 2)
+const computedHeight = computed(() => props.height + props.border * 2)
 
-const viewBox = computed(
-  () => `0 0 ${ORIGINAL_WIDTH} ${verticalHeight.value + CORNER_SIZE * 2 + Math.abs(TRANSLATE_Y)}`
-)
+// viewBox动态计算
+// 其他计算属性保持不变，仅新增以下优化：
+const viewBox = computed(() => {
+  // 添加0.5像素偏移解决亚像素渲染问题
+  return `${-props.border - 0.5} ${-props.border - 0.5} 
+          ${props.width + props.border * 2 + 1} 
+          ${props.height + props.border * 2 + 1}`
+})
 </script>
